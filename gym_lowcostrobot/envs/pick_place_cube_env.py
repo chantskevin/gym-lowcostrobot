@@ -152,13 +152,6 @@ class PickPlaceCubeEnv(Env):
         # control range
         self.ctrl_range = self.model.actuator_ctrlrange
 
-    def check_joint_limits(self, q):
-        """Check if the joints is under or above its limits"""
-        for i in range(len(q)):
-            q[i] = max(self.model.jnt_range[i][0], min(q[i], self.model.jnt_range[i][1]))
-
-        return q
-
     def inverse_kinematics(
         self,
         ee_target_pos,
@@ -196,9 +189,6 @@ class PickPlaceCubeEnv(Env):
         q = self.data.qpos[:num_dof].copy()
 
         for _ in range(max_iter):
-            self.data.qpos[:num_dof] = q
-            mujoco.mj_forward(self.model, self.data)
-
             ee_pos = self.data.site(ee_id).xpos
             error = ee_target_pos - ee_pos
             error_norm = np.linalg.norm(error)
@@ -229,7 +219,7 @@ class PickPlaceCubeEnv(Env):
             q += qdot * step
 
             # Check limits
-            q = self.check_joint_limits(q)
+            np.clip(q, *self.model.jnt_range[:num_dof].T, out=q)
 
         q_target_pos = q
         return q_target_pos

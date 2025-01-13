@@ -110,12 +110,12 @@
   </contact>
 
   <actuator>
-    <position class="follower" name="joint_1" joint="joint_1"/>
-    <position class="follower" name="joint_2" joint="joint_2"/>
-    <position class="follower" name="joint_3" joint="joint_3"/>
-    <position class="follower" name="joint_4" joint="joint_4"/>
-    <position class="follower" name="joint_5" joint="joint_5"/>
-    <position class="follower" name="joint_6" joint="joint_6"/>
+      <position class="follower" name="joint_1" joint="joint_1" kp="100" kv="10" forcerange="-250 250"/>
+      <position class="follower" name="joint_2" joint="joint_2" kp="100" kv="10" forcerange="-150 150"/>
+      <position class="follower" name="joint_3" joint="joint_3" kp="100" kv="10" forcerange="-150 150"/>
+      <position class="follower" name="joint_4" joint="joint_4" kp="100" kv="10" forcerange="-150 150"/>
+      <position class="follower" name="joint_5" joint="joint_5" kp="10" kv="1" forcerange="-10 10"/>
+      <position class="follower" name="joint_6" joint="joint_6" kp="10" kv="1" forcerange="-2 2"/>
   </actuator>
 
 </mujoco>
