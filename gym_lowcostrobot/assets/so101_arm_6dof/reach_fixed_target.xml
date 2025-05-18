@@ -25,7 +25,7 @@
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" pos="0 0 0" friction="0.1"/>
 
     <!-- Fixed target sphere at an easy-to-reach position - moved closer to default arm position -->
-    <site name="target" pos="0.2 0.2 0.15" size="0.025" material="target" type="sphere"/>
+    <site name="target" pos="0.0 0.3 0.3" size="0.025" material="target" type="sphere"/>
 
     <!-- Camera positions adjusted for the SO101 arm -->
     <camera name="camera_front" pos="0.049 0.5 0.225" xyaxes="-0.998 0.056 -0.000 -0.019 -0.335 0.942"/>
