@@ -6,7 +6,7 @@ import mujoco.viewer
 import numpy as np
 from gymnasium import Env, spaces
 
-from gym_lowcostrobot import ASSETS_PATH
+from gym_lowcostrobot import ASSETS_PATH, SO101_ASSETS_PATH
 
 
 class PickPlaceCubeEnv(Env):
@@ -88,9 +88,14 @@ class PickPlaceCubeEnv(Env):
         goal_z_range=0.1,
         n_substeps=20,
         render_mode=None,
+        robot_model="default",
     ):
         # Load the MuJoCo model and data
-        self.model = mujoco.MjModel.from_xml_path(os.path.join(ASSETS_PATH, "pick_place_cube.xml"))
+        if robot_model == "so101":
+            assets_path = SO101_ASSETS_PATH
+        else:
+            assets_path = ASSETS_PATH
+        self.model = mujoco.MjModel.from_xml_path(os.path.join(assets_path, "pick_place_cube.xml"))
         self.data = mujoco.MjData(self.model)
 
         # Set the action space
@@ -332,7 +337,7 @@ class PickPlaceCubeEnv(Env):
         # Get the new observation
         observation = self.get_observation()
 
-        # Get the position of the cube 
+        # Get the position of the cube
         cube_id = self.model.body("cube").id
         cube_pos = self.data.body(cube_id).xpos.copy()
 

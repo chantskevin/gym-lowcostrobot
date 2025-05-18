@@ -6,7 +6,7 @@ import mujoco.viewer
 import numpy as np
 from gymnasium import Env, spaces
 
-from gym_lowcostrobot import ASSETS_PATH
+from gym_lowcostrobot import ASSETS_PATH, SO101_ASSETS_PATH
 
 
 class LiftCubeEnv(Env):
@@ -70,6 +70,7 @@ class LiftCubeEnv(Env):
         section "Observation space".
     - `action_mode (str)`: the action mode, can be "joint" or "ee", default is "joint", see section "Action space".
     - `render_mode (str)`: the render mode, can be "human" or "rgb_array", default is None.
+    - `robot_model (str)`: the robot model to use, can be "default" or "so101", default is "default".
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 25}
@@ -85,9 +86,16 @@ class LiftCubeEnv(Env):
         cube_xy_range=0.3,
         n_substeps=20,
         render_mode=None,
+        robot_model="default",
     ):
+        # Select the appropriate assets path based on the robot model
+        if robot_model == "so101":
+            assets_path = SO101_ASSETS_PATH
+        else:
+            assets_path = ASSETS_PATH
+
         # Load the MuJoCo model and data
-        self.model = mujoco.MjModel.from_xml_path(os.path.join(ASSETS_PATH, "lift_cube.xml"))
+        self.model = mujoco.MjModel.from_xml_path(os.path.join(assets_path, "lift_cube.xml"))
         self.data = mujoco.MjData(self.model)
 
         # Set the action space
