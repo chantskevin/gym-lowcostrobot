@@ -112,15 +112,22 @@ class ReachCubeEnv(Env):
         # Set the observations space
         self.observation_mode = observation_mode
         observation_subspaces = {
-            "arm_qpos": spaces.Box(low=-np.pi, high=np.pi, shape=(6,)),
-            "arm_qvel": spaces.Box(low=-10.0, high=10.0, shape=(6,)),
+            "arm_qpos": spaces.Box(low=-np.pi, high=np.pi, shape=(6,), dtype=np.float32),
+            "arm_qvel": spaces.Box(low=-10.0, high=10.0, shape=(6,), dtype=np.float32),
         }
         if self.observation_mode in ["image", "both"]:
-            observation_subspaces["image_front"] = spaces.Box(0, 255, shape=(240, 320, 3), dtype=np.uint8)
-            observation_subspaces["image_top"] = spaces.Box(0, 255, shape=(240, 320, 3), dtype=np.uint8)
+            # Images are normalized to [0, 1] range with float32 dtype
+            observation_subspaces["image_front"] = spaces.Box(
+                low=0.0, high=1.0, shape=(240, 320, 3), dtype=np.float32
+            )
+            observation_subspaces["image_top"] = spaces.Box(
+                low=0.0, high=1.0, shape=(240, 320, 3), dtype=np.float32
+            )
             self.renderer = mujoco.Renderer(self.model)
         if self.observation_mode in ["state", "both"]:
-            observation_subspaces["cube_pos"] = spaces.Box(low=-10.0, high=10.0, shape=(3,))
+            observation_subspaces["cube_pos"] = spaces.Box(
+                low=-10.0, high=10.0, shape=(3,), dtype=np.float32
+            )
         self.observation_space = gym.spaces.Dict(observation_subspaces)
 
         self.control_decimation = n_substeps  # number of simulation steps per control step
@@ -140,12 +147,14 @@ class ReachCubeEnv(Env):
         # Set additional utils
         self.cube_xy_range = cube_xy_range
 
-        self.cube_low = np.array([-self.cube_xy_range / 2, -self.cube_xy_range / 2, 0])
-        self.cube_high = np.array([self.cube_xy_range / 2, self.cube_xy_range / 2, 0])
+        # Set cube position ranges (x, y, z)
+        # Z is set to be between 0.05 and 0.15 meters above the ground
+        self.cube_low = np.array([-self.cube_xy_range / 2, -self.cube_xy_range / 2, 0.01])
+        self.cube_high = np.array([self.cube_xy_range / 2, self.cube_xy_range / 2, 0.01])
 
         # Shift in y-axis to sample from positive coordinates in the y-axis
-        self.cube_low[1] += 0.15 + 0.2
-        self.cube_high[1] += 0.20
+        self.cube_low[1] += 0.15 + 0.2  # 0.15 (initial shift) + 0.2 (additional shift)
+        self.cube_high[1] += 0.20  # 0.20 (shift for high bound)
 
     def inverse_kinematics(
         self,
@@ -277,22 +286,6 @@ class ReachCubeEnv(Env):
             if self.render_mode == "human":
                 self.viewer.sync()
 
-    def get_observation(self):
-        # qpos is [x, y, z, qw, qx, qy, qz, q1, q2, q3, q4, q5, gripper]
-        # qvel is [vx, vy, vz, wx, wy, wz, dq1, dq2, dq3, dq4, dq5, dgripper]
-        observation = {
-            "arm_qpos": self.data.qpos[: self.num_dof].astype(np.float32),
-            "arm_qvel": self.data.qvel[: self.num_dof].astype(np.float32),
-        }
-        if self.observation_mode in ["image", "both"]:
-            self.renderer.update_scene(self.data, camera="camera_front")
-            observation["image_front"] = self.renderer.render()
-            self.renderer.update_scene(self.data, camera="camera_top")
-            observation["image_top"] = self.renderer.render()
-        if self.observation_mode in ["state", "both"]:
-            observation["cube_pos"] = self.data.qpos[self.num_dof : self.num_dof + 3].astype(np.float32)
-        return observation
-
     def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed, options=options)
@@ -301,13 +294,41 @@ class ReachCubeEnv(Env):
         cube_pos = self.np_random.uniform(self.cube_low, self.cube_high)
         cube_rot = np.array([1.0, 0.0, 0.0, 0.0])
         robot_qpos = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        self.data.qpos[: self.num_dof] = robot_qpos
-        self.data.qpos[self.num_dof : self.num_dof + 7] = np.concatenate([cube_pos, cube_rot])
+        self.data.qpos[:self.num_dof] = robot_qpos
+        self.data.qpos[self.num_dof:self.num_dof + 7] = np.concatenate([cube_pos, cube_rot])
 
         # Step the simulation
         mujoco.mj_forward(self.model, self.data)
 
-        return self.get_observation(), {}
+        # Get the initial observation
+        observation = self.get_observation()
+        info = {}  # Additional info if needed
+
+        return observation, info
+
+    def get_observation(self):
+        # qpos is [x, y, z, qw, qx, qy, qz, q1, q2, q3, q4, q5, gripper]
+        # qvel is [vx, vy, vz, wx, wy, wz, dq1, dq2, dq3, dq4, dq5, dgripper]
+        observation = {
+            "arm_qpos": self.data.qpos[:self.num_dof].astype(np.float32),
+            "arm_qvel": self.data.qvel[:self.num_dof].astype(np.float32),
+        }
+
+        if self.observation_mode in ["image", "both"]:
+            # Update and render front camera view
+            self.renderer.update_scene(self.data, camera="camera_front")
+            # Convert to float32 and normalize to [0, 1]
+            observation["image_front"] = (self.renderer.render().astype(np.float32) / 255.0)
+
+            # Update and render top camera view
+            self.renderer.update_scene(self.data, camera="camera_top")
+            # Convert to float32 and normalize to [0, 1]
+            observation["image_top"] = (self.renderer.render().astype(np.float32) / 255.0)
+
+        if self.observation_mode in ["state", "both"]:
+            observation["cube_pos"] = self.data.qpos[self.num_dof:self.num_dof + 3].astype(np.float32)
+
+        return observation
 
     def step(self, action):
         # Perform the action and step the simulation
