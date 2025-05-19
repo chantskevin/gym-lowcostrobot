@@ -144,8 +144,8 @@ class ReachCubeEnv(Env):
         self.cube_high = np.array([self.cube_xy_range / 2, self.cube_xy_range / 2, 0])
 
         # Shift in y-axis to sample from positive coordinates in the y-axis
-        self.cube_low[1] += 0.165
-        self.cube_high[1] += 0.10
+        self.cube_low[1] += 0.15 + 0.2
+        self.cube_high[1] += 0.20
 
     def inverse_kinematics(
         self,
@@ -324,7 +324,11 @@ class ReachCubeEnv(Env):
         ee_id = self.model.site("end_effector_site").id
         ee_pos = self.data.site(ee_id).xpos.copy()
 
-        info = {"is_success": self.is_success(ee_pos, cube_pos)}
+        distance = np.linalg.norm(ee_pos - cube_pos)
+        info = {
+            "is_success": self.is_success(ee_pos, cube_pos),
+            "distance": distance
+        }
 
         terminated = info["is_success"]
         truncated = False
