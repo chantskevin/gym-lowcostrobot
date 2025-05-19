@@ -6,7 +6,7 @@ import mujoco.viewer
 import numpy as np
 from gymnasium import Env, spaces
 
-from gym_lowcostrobot import ASSETS_PATH
+from gym_lowcostrobot import ASSETS_PATH, SO101_ASSETS_PATH
 
 
 class ReachCubeEnv(Env):
@@ -84,9 +84,18 @@ class ReachCubeEnv(Env):
         cube_xy_range=0.3,
         n_substeps=20,
         render_mode=None,
+        robot_model="low_cost_robot",
     ):
+        # Select the appropriate assets path based on the robot model
+        if robot_model == "so101":
+            assets_path = SO101_ASSETS_PATH
+            self.xml_file = "reach_cube_so101.xml"
+        else:
+            assets_path = ASSETS_PATH
+            self.xml_file = "reach_cube.xml"
+
         # Load the MuJoCo model and data
-        self.model = mujoco.MjModel.from_xml_path(os.path.join(ASSETS_PATH, "reach_cube.xml"))
+        self.model = mujoco.MjModel.from_xml_path(os.path.join(assets_path, self.xml_file))
         self.data = mujoco.MjData(self.model)
 
         # Set the action space
