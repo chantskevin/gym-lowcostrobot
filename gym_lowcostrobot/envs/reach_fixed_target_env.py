@@ -74,7 +74,15 @@ class ReachFixedTargetEnv(Env):
         n_substeps=20,
         render_mode=None,
         robot_model="so101",
+        target_x_range=(-0.2, 0.2),  # x range for random target position
+        target_y_range=(0.2, 0.4),    # y range for random target position
+        target_z_range=(0.1, 0.3),    # z range for random target position
     ):
+        # Store target position ranges as instance variables
+        self.target_x_range = target_x_range
+        self.target_y_range = target_y_range
+        self.target_z_range = target_z_range
+
         # Select the appropriate assets path based on the robot model
         if robot_model == "so101":
             assets_path = SO101_ASSETS_PATH
@@ -223,7 +231,17 @@ class ReachFixedTargetEnv(Env):
         # Step the simulation
         mujoco.mj_forward(self.model, self.data)
 
-        # Note: We don't need to update the target site position as it's fixed in the XML
+        # Randomize target position within specified ranges
+        self.target_pos = np.array([
+            self.np_random.uniform(low=self.target_x_range[0], high=self.target_x_range[1]),
+            self.np_random.uniform(low=self.target_y_range[0], high=self.target_y_range[1]),
+            self.np_random.uniform(low=self.target_z_range[0], high=self.target_z_range[1])
+        ])
+
+        # Update the target site position
+        target_site_id = self.model.site("target").id
+        self.model.site_pos[target_site_id] = self.target_pos
+        mujoco.mj_forward(self.model, self.data)  # Update the physics
 
         # Initialize previous distance for reward shaping
         ee_id = self.model.site("end_effector_site").id
@@ -270,10 +288,6 @@ class ReachFixedTargetEnv(Env):
                 # Reward improvement in distance
                 distance_improvement = self.prev_distance - distance
                 reward += 5.0 * distance_improvement  # Scale the improvement reward
-
-            # Add a large bonus for success
-            if is_success:
-                reward += 10.0
 
         # Store the current distance for the next step
         self.prev_distance = distance
